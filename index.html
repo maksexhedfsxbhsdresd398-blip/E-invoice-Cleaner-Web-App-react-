@@ -27,7 +27,9 @@
                 for (let i = 1; i < rows.length; i++) {
                     if (rows[i].trim() === "") continue;
 
+                    // 1. Strip all quotes first
                     let row = rows[i].replace(/"/g, '');
+                    // 2. Now split by semicolon
                     let cols = row.split(';');
 
                     if (cols.length < 8) continue;
@@ -37,16 +39,11 @@
                     const vat = parseCurrency(cols[5]);
                     const taxable = parseCurrency(cols[6]);
 
-                    if (!data[situation]) data[situation] = { count: 0, withVAT: 0, withoutVAT: 0 };
-                    
+                    if (!data[situation]) data[situation] = { count: 0, total: 0, vat: 0, taxable: 0 };
                     data[situation].count++;
-                    
-                    // Logic: If VAT > 0, treat as "With VAT" (use Total), otherwise "No VAT" (use Taxable Base)
-                    if (vat > 0) {
-                        data[situation].withVAT += total;
-                    } else {
-                        data[situation].withoutVAT += taxable;
-                    }
+                    data[situation].total += total;
+                    data[situation].vat += vat;
+                    data[situation].taxable += taxable;
                 }
                 displayResults(data);
             };
@@ -55,7 +52,9 @@
 
         function parseCurrency(val) {
             if (!val) return 0;
+            // Keep only digits, comma, dot.
             let cleaned = val.replace(/[^0-9,.]/g, '');
+            // Convert European format (1.234,56) to standard float (1234.56)
             if (cleaned.includes(',')) {
                 cleaned = cleaned.replace(/\./g, '').replace(',', '.');
             }
@@ -63,16 +62,13 @@
         }
 
         function displayResults(data) {
-            let html = '<table><tr><th>Situation</th><th>Count</th><th>Taxable Base (With VAT)</th><th>Taxable Base (No VAT)</th></tr>';
-            let g = { count: 0, withVAT: 0, withoutVAT: 0 };
-            
+            let html = '<table><tr><th>Situation</th><th>Count</th><th>Total (€)</th><th>VAT (€)</th><th>Taxable Base (€)</th></tr>';
+            let g = { count: 0, total: 0, vat: 0, taxable: 0 };
             for (let s in data) {
-                html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].withVAT.toFixed(2)}</td><td>${data[s].withoutVAT.toFixed(2)}</td></tr>`;
-                g.count += data[s].count; 
-                g.withVAT += data[s].withVAT; 
-                g.withoutVAT += data[s].withoutVAT;
+                html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].total.toFixed(2)}</td><td>${data[s].vat.toFixed(2)}</td><td>${data[s].taxable.toFixed(2)}</td></tr>`;
+                g.count += data[s].count; g.total += data[s].total; g.vat += data[s].vat; g.taxable += data[s].taxable;
             }
-            html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.withVAT.toFixed(2)}</strong></td><td><strong>${g.withoutVAT.toFixed(2)}</strong></td></tr></table>`;
+            html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.total.toFixed(2)}</strong></td><td><strong>${g.vat.toFixed(2)}</strong></td><td><strong>${g.taxable.toFixed(2)}</strong></td></tr></table>`;
             document.getElementById('result').innerHTML = html;
         }
     </script>
