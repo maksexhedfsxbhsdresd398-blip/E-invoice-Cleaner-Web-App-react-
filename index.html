@@ -1,65 +1,83 @@
-<script>
-    document.getElementById('csvFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const text = event.target.result;
-            const rows = text.split(/\r?\n/);
-            let data = {};
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice Analyzer</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
+        th { background-color: #f4f4f4; text-align: center; }
+    </style>
+</head>
+<body>
+    <h2>CSV Invoice Analyzer</h2>
+    <input type="file" id="csvFile" accept=".csv">
+    <div id="result"></div>
 
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].trim() === "") continue;
+    <script>
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const text = event.target.result;
+                const rows = text.split(/\r?\n/);
+                let data = {};
 
-                let row = rows[i].replace(/"/g, '');
-                let cols = row.split(';');
+                for (let i = 1; i < rows.length; i++) {
+                    if (rows[i].trim() === "") continue;
 
-                if (cols.length < 8) continue;
+                    let row = rows[i].replace(/"/g, '');
+                    let cols = row.split(';');
 
-                const situation = cols[7].trim();
-                const total = parseCurrency(cols[4]);
-                const vat = parseCurrency(cols[5]);
-                const taxable = parseCurrency(cols[6]);
+                    if (cols.length < 8) continue;
 
-                if (!data[situation]) {
-                    data[situation] = { count: 0, vatTotal: 0, taxableWithVAT: 0, taxableNoVAT: 0 };
+                    const situation = cols[7].trim();
+                    const vat = parseCurrency(cols[5]);
+                    const taxable = parseCurrency(cols[6]);
+
+                    if (!data[situation]) {
+                        data[situation] = { count: 0, vatTotal: 0, taxableWithVAT: 0, taxableNoVAT: 0 };
+                    }
+                    
+                    data[situation].count++;
+                    data[situation].vatTotal += vat;
+                    
+                    // Logic: If VAT exists, add to With VAT bucket; otherwise, add to No VAT bucket.
+                    if (vat > 0) {
+                        data[situation].taxableWithVAT += taxable;
+                    } else {
+                        data[situation].taxableNoVAT += taxable;
+                    }
                 }
-                
-                data[situation].count++;
-                data[situation].vatTotal += vat;
-                
-                // If VAT exists, add to "With VAT", otherwise add to "No VAT"
-                if (vat > 0) {
-                    data[situation].taxableWithVAT += taxable;
-                } else {
-                    data[situation].taxableNoVAT += taxable;
-                }
+                displayResults(data);
+            };
+            reader.readAsText(file);
+        });
+
+        function parseCurrency(val) {
+            if (!val) return 0;
+            let cleaned = val.replace(/[^0-9,.]/g, '');
+            if (cleaned.includes(',')) {
+                cleaned = cleaned.replace(/\./g, '').replace(',', '.');
             }
-            displayResults(data);
-        };
-        reader.readAsText(file);
-    });
-
-    function parseCurrency(val) {
-        if (!val) return 0;
-        let cleaned = val.replace(/[^0-9,.]/g, '');
-        if (cleaned.includes(',')) {
-            cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
         }
-        return parseFloat(cleaned) || 0;
-    }
 
-    function displayResults(data) {
-        let html = '<table><tr><th>Situation</th><th>Count</th><th>VAT</th><th>Taxable Base (With VAT)</th><th>Taxable Base (No VAT)</th></tr>';
-        let g = { count: 0, vat: 0, withVAT: 0, noVAT: 0 };
-        
-        for (let s in data) {
-            html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].vatTotal.toFixed(2)}</td><td>${data[s].taxableWithVAT.toFixed(2)}</td><td>${data[s].taxableNoVAT.toFixed(2)}</td></tr>`;
-            g.count += data[s].count;
-            g.vat += data[s].vatTotal;
-            g.withVAT += data[s].taxableWithVAT;
-            g.noVAT += data[s].taxableNoVAT;
+        function displayResults(data) {
+            let html = '<table><tr><th>Situation</th><th>Count</th><th>VAT</th><th>Taxable Base (With VAT)</th><th>Taxable Base (No VAT)</th></tr>';
+            let g = { count: 0, vat: 0, withVAT: 0, noVAT: 0 };
+            
+            for (let s in data) {
+                html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].vatTotal.toFixed(2)}</td><td>${data[s].taxableWithVAT.toFixed(2)}</td><td>${data[s].taxableNoVAT.toFixed(2)}</td></tr>`;
+                g.count += data[s].count;
+                g.vat += data[s].vatTotal;
+                g.withVAT += data[s].taxableWithVAT;
+                g.noVAT += data[s].taxableNoVAT;
+            }
+            html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.vat.toFixed(2)}</strong></td><td><strong>${g.withVAT.toFixed(2)}</strong></td><td><strong>${g.noVAT.toFixed(2)}</strong></td></tr></table>`;
+            document.getElementById('result').innerHTML = html;
         }
-        html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.vat.toFixed(2)}</strong></td><td><strong>${g.withVAT.toFixed(2)}</strong></td><td><strong>${g.noVAT.toFixed(2)}</strong></td></tr></table>`;
-        document.getElementById('result').innerHTML = html;
-    }
-</script>
+    </script>
+</body>
+</html>
