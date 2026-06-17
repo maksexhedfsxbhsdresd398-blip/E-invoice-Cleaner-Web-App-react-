@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <title>E-Invoice Cleaner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Minimal styles -->
   <style>
     :root { --bg:#f6f7fb; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb; }
     body { margin:0; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
@@ -24,12 +23,10 @@
     .spacer { height:12px; }
   </style>
 
-  <!-- React + Babel (JSX transpiles in-browser) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
 
-  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
@@ -39,7 +36,6 @@
 
   <script type="text/babel">
     /** @jsxRuntime classic */
-    
     const { useCallback, useRef, useState } = React;
 
     // --- Helpers ---
