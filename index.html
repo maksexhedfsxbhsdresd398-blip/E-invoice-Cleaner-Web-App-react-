@@ -43,7 +43,6 @@
                     data[situation].count++;
                     data[situation].vatTotal += vat;
                     
-                    // Logic: If VAT exists, add to With VAT bucket; otherwise, add to No VAT bucket.
                     if (vat > 0) {
                         data[situation].taxableWithVAT += taxable;
                     } else {
