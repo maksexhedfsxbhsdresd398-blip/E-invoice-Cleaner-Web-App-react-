@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Multi-File Invoice Analyzer</title>
+    <title>Invoice Analyzer</title>
     <style>
         body { font-family: sans-serif; padding: 20px; }
         .file-group { margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
         table { border-collapse: collapse; width: 100%; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
         th { background-color: #f4f4f4; text-align: center; }
-        h3 { color: #2c3e50; }
     </style>
 </head>
 <body>
@@ -21,7 +20,7 @@
         document.getElementById('csvFiles').addEventListener('change', function(e) {
             const files = e.target.files;
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = ''; // Clear previous results
+            resultDiv.innerHTML = ''; 
 
             for (let i = 0; i < files.length; i++) {
                 const reader = new FileReader();
@@ -43,18 +42,28 @@
                 if (cols.length < 8) continue;
 
                 const situation = cols[7].trim();
+                const total = parseCurrency(cols[4]);
                 const vat = parseCurrency(cols[5]);
                 const taxable = parseCurrency(cols[6]);
 
                 if (!data[situation]) {
-                    data[situation] = { count: 0, vatSum: 0, taxWithVATSum: 0, taxNoVATSum: 0 };
+                    data[situation] = { count: 0, vat6: 0, tax6: 0, vat23: 0, tax23: 0, taxNoVAT: 0 };
                 }
+                
                 data[situation].count++;
-                data[situation].vatSum += vat;
-                if (vat > 0) {
-                    data[situation].taxWithVATSum += taxable;
+                
+                // Logic: Determine rate based on VAT amount relative to Taxable Base
+                // 6% check (roughly) vs 23% check
+                const rate = (taxable > 0) ? (vat / taxable) : 0;
+
+                if (rate >= 0.20) { // Likely 23%
+                    data[situation].vat23 += vat;
+                    data[situation].tax23 += taxable;
+                } else if (rate > 0.03 && rate < 0.20) { // Likely 6%
+                    data[situation].vat6 += vat;
+                    data[situation].tax6 += taxable;
                 } else {
-                    data[situation].taxNoVATSum += taxable;
+                    data[situation].taxNoVAT += taxable;
                 }
             }
             renderTable(data, fileName);
@@ -68,21 +77,23 @@
         }
 
         function renderTable(data, fileName) {
-            let html = `<div class="file-group"><h3>File: ${fileName}</h3><table><tr><th>Situation</th><th>Count</th><th>VAT (Sum)</th><th>Base With VAT (Sum)</th><th>Base No VAT (Sum)</th></tr>`;
-            let g = { c: 0, vS: 0, tWS: 0, tNS: 0 };
+            let html = `<div class="file-group"><h3>File: ${fileName}</h3>
+            <table><tr><th>Situation</th><th>Count</th><th>VAT 6%</th><th>Taxable With VAT 6%</th><th>VAT 23%</th><th>Taxable 23%</th><th>Base No VAT</th></tr>`;
+            
+            let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, nV: 0 };
             
             for (let s in data) {
                 html += `<tr><td>${s}</td><td>${data[s].count}</td>
-                         <td>${data[s].vatSum.toFixed(2)}</td>
-                         <td>${data[s].taxWithVATSum.toFixed(2)}</td>
-                         <td>${data[s].taxNoVATSum.toFixed(2)}</td></tr>`;
-                g.c += data[s].count; g.vS += data[s].vatSum; 
-                g.tWS += data[s].taxWithVATSum; g.tNS += data[s].taxNoVATSum;
+                         <td>${data[s].vat6.toFixed(2)}</td><td>${data[s].tax6.toFixed(2)}</td>
+                         <td>${data[s].vat23.toFixed(2)}</td><td>${data[s].tax23.toFixed(2)}</td>
+                         <td>${data[s].taxNoVAT.toFixed(2)}</td></tr>`;
+                g.c += data[s].count; g.v6 += data[s].vat6; g.t6 += data[s].tax6;
+                g.v23 += data[s].vat23; g.t23 += data[s].tax23; g.nV += data[s].taxNoVAT;
             }
             html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
-                     <td><strong>${g.vS.toFixed(2)}</strong></td>
-                     <td><strong>${g.tWS.toFixed(2)}</strong></td>
-                     <td><strong>${g.tNS.toFixed(2)}</strong></td></tr></table></div>`;
+                     <td><strong>${g.v6.toFixed(2)}</strong></td><td><strong>${g.t6.toFixed(2)}</strong></td>
+                     <td><strong>${g.v23.toFixed(2)}</strong></td><td><strong>${g.t23.toFixed(2)}</strong></td>
+                     <td><strong>${g.nV.toFixed(2)}</strong></td></tr></table></div>`;
             document.getElementById('result').innerHTML += html;
         }
     </script>
