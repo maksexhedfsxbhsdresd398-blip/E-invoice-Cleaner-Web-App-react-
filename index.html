@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice Analyzer</title>
+    <title>Universal Invoice Analyzer</title>
     <style>
         body { font-family: sans-serif; padding: 20px; }
         .file-group { margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-    <h2>Multi-File Invoice Analyzer</h2>
+    <h2>Universal Invoice Analyzer</h2>
     <input type="file" id="csvFiles" accept=".csv" multiple>
     <div id="result"></div>
 
@@ -33,18 +33,32 @@
 
         function processFile(text, fileName) {
             const rows = text.split(/\r?\n/);
-            let data = {};
+            if (rows.length < 2) return;
 
+            // 1. Detect Header Indices
+            const headers = rows[0].replace(/"/g, '').split(';');
+            const map = {
+                total: headers.indexOf('Total'),
+                vat: headers.indexOf('VAT'),
+                taxable: headers.indexOf('Taxable Base'),
+                situation: headers.indexOf('Situation')
+            };
+
+            if (map.total === -1 || map.vat === -1 || map.taxable === -1 || map.situation === -1) {
+                resultDiv.innerHTML += `<p>Error: Could not find required columns in ${fileName}.</p>`;
+                return;
+            }
+
+            // 2. Process Rows
+            let data = {};
             for (let i = 1; i < rows.length; i++) {
                 if (rows[i].trim() === "") continue;
-                let row = rows[i].replace(/"/g, '');
-                let cols = row.split(';');
-                if (cols.length < 8) continue;
+                let cols = rows[i].replace(/"/g, '').split(';');
 
-                const situation = cols[7].trim();
-                const total = parseCurrency(cols[4]);
-                const vat = parseCurrency(cols[5]);
-                const taxable = parseCurrency(cols[6]);
+                const situation = cols[map.situation].trim();
+                const total = parseCurrency(cols[map.total]);
+                const vat = parseCurrency(cols[map.vat]);
+                const taxable = parseCurrency(cols[map.taxable]);
 
                 if (!data[situation]) {
                     data[situation] = { count: 0, vat6: 0, tax6: 0, vat23: 0, tax23: 0, taxNoVAT: 0 };
@@ -52,14 +66,12 @@
                 
                 data[situation].count++;
                 
-                // Logic: Determine rate based on VAT amount relative to Taxable Base
-                // 6% check (roughly) vs 23% check
+                // Categorization Logic
                 const rate = (taxable > 0) ? (vat / taxable) : 0;
-
-                if (rate >= 0.20) { // Likely 23%
+                if (rate >= 0.15) { // 23%
                     data[situation].vat23 += vat;
                     data[situation].tax23 += taxable;
-                } else if (rate > 0.03 && rate < 0.20) { // Likely 6%
+                } else if (rate > 0.03) { // 6%
                     data[situation].vat6 += vat;
                     data[situation].tax6 += taxable;
                 } else {
@@ -81,7 +93,6 @@
             <table><tr><th>Situation</th><th>Count</th><th>VAT 6%</th><th>Taxable With VAT 6%</th><th>VAT 23%</th><th>Taxable 23%</th><th>Base No VAT</th></tr>`;
             
             let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, nV: 0 };
-            
             for (let s in data) {
                 html += `<tr><td>${s}</td><td>${data[s].count}</td>
                          <td>${data[s].vat6.toFixed(2)}</td><td>${data[s].tax6.toFixed(2)}</td>
