@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <title>Invoice Analyzer</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.6; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
+        th { background-color: #f4f4f4; text-align: center; }
     </style>
 </head>
 <body>
     <h2>CSV Invoice Analyzer</h2>
+    <p>Upload your e-invoice CSV file to get an automated summary.</p>
     <input type="file" id="csvFile" accept=".csv">
     <div id="result"></div>
 
@@ -20,34 +22,48 @@
             const reader = new FileReader();
             reader.onload = function(event) {
                 const text = event.target.result;
-                const rows = text.split('\n').slice(1);
+                const rows = text.split('\\n');
                 let data = {};
 
-                rows.forEach(row => {
-                    const cols = row.split(';');
-                    if (cols.length < 8) return;
+                for (let i = 1; i < rows.length; i++) {
+                    if (rows[i].trim() === "") continue;
                     
-                    const situation = cols[7].trim();
-                    const total = parseFloat(cols[4].replace(' €', '').replace('.', '').replace(',', '.'));
-                    const vat = parseFloat(cols[5].replace(' €', '').replace('.', '').replace(',', '.'));
-                    const taxable = parseFloat(cols[6].replace(' €', '').replace('.', '').replace(',', '.'));
+                    // Regex to handle CSV structure correctly
+                    const cols = rows[i].split(/;(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    if (cols.length < 8) continue;
+                    
+                    const situation = cols[7].replace(/"/g, '').trim();
+                    const total = parseCurrency(cols[4]);
+                    const vat = parseCurrency(cols[5]);
+                    const taxable = parseCurrency(cols[6]);
 
                     if (!data[situation]) data[situation] = { count: 0, total: 0, vat: 0, taxable: 0 };
                     data[situation].count++;
                     data[situation].total += total;
                     data[situation].vat += vat;
                     data[situation].taxable += taxable;
-                });
-
-                let html = '<table><tr><th>Situation</th><th>Count</th><th>Total</th><th>VAT</th><th>Taxable Base</th></tr>';
-                for (let s in data) {
-                    html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].total.toFixed(2)}</td><td>${data[s].vat.toFixed(2)}</td><td>${data[s].taxable.toFixed(2)}</td></tr>`;
                 }
-                html += '</table>';
-                document.getElementById('result').innerHTML = html;
+                displayResults(data);
             };
             reader.readAsText(file);
         });
+
+        function parseCurrency(val) {
+            let cleaned = val.replace(/"/g, '').replace(' €', '').replace('.', '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
+        }
+
+        function displayResults(data) {
+            let html = '<table><tr><th>Situation</th><th>Count</th><th>Total (€)</th><th>VAT (€)</th><th>Taxable Base (€)</th></tr>';
+            let g = { count: 0, total: 0, vat: 0, taxable: 0 };
+            
+            for (let s in data) {
+                html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].total.toFixed(2)}</td><td>${data[s].vat.toFixed(2)}</td><td>${data[s].taxable.toFixed(2)}</td></tr>`;
+                g.count += data[s].count; g.total += data[s].total; g.vat += data[s].vat; g.taxable += data[s].taxable;
+            }
+            html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.total.toFixed(2)}</strong></td><td><strong>${g.vat.toFixed(2)}</strong></td><td><strong>${g.taxable.toFixed(2)}</strong></td></tr></table>`;
+            document.getElementById('result').innerHTML = html;
+        }
     </script>
 </body>
 </html>
