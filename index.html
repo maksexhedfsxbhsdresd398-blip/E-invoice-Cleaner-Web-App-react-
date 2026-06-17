@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; padding: 20px; }
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
         th { background-color: #f4f4f4; text-align: center; }
     </style>
 </head>
@@ -37,24 +37,17 @@
                     const taxable = parseCurrency(cols[6]);
 
                     if (!data[situation]) {
-                        data[situation] = { 
-                            count: 0, 
-                            countVAT: 0, 
-                            countNoVAT: 0, 
-                            vatTotal: 0, 
-                            taxableWithVAT: 0, 
-                            taxableNoVAT: 0 
-                        };
+                        data[situation] = { count: 0, countVAT: 0, countNoVAT: 0, vatSum: 0, taxWithVATSum: 0, taxNoVATSum: 0 };
                     }
                     
                     data[situation].count++;
                     if (vat > 0) {
                         data[situation].countVAT++;
-                        data[situation].vatTotal += vat;
-                        data[situation].taxableWithVAT += taxable;
+                        data[situation].vatSum += vat;
+                        data[situation].taxWithVATSum += taxable;
                     } else {
                         data[situation].countNoVAT++;
-                        data[situation].taxableNoVAT += taxable;
+                        data[situation].taxNoVATSum += taxable;
                     }
                 }
                 displayResults(data);
@@ -72,15 +65,21 @@
         }
 
         function displayResults(data) {
-            let html = '<table><tr><th>Situation</th><th>Total Count</th><th>VAT (Count)</th><th>VAT Sum</th><th>Base (With VAT) (Count)</th><th>Base (With VAT) Sum</th><th>Base (No VAT) (Count)</th><th>Base (No VAT) Sum</th></tr>';
-            let g = { count: 0, cV: 0, cN: 0, vat: 0, wV: 0, nV: 0 };
+            let html = '<table><tr><th>Situation</th><th>Total</th><th>VAT (Count | Sum)</th><th>Base With VAT (Count | Sum)</th><th>Base No VAT (Count | Sum)</th></tr>';
+            let g = { c: 0, cV: 0, cN: 0, vS: 0, tWS: 0, tNS: 0 };
             
             for (let s in data) {
-                html += `<tr><td>${s}</td><td>${data[s].count}</td><td>${data[s].countVAT}</td><td>${data[s].vatTotal.toFixed(2)}</td><td>${data[s].countVAT}</td><td>${data[s].taxableWithVAT.toFixed(2)}</td><td>${data[s].countNoVAT}</td><td>${data[s].taxableNoVAT.toFixed(2)}</td></tr>`;
-                g.count += data[s].count; g.cV += data[s].countVAT; g.cN += data[s].countNoVAT;
-                g.vat += data[s].vatTotal; g.wV += data[s].taxableWithVAT; g.nV += data[s].taxableNoVAT;
+                html += `<tr><td>${s}</td><td>${data[s].count}</td>
+                         <td>${data[s].countVAT} | ${data[s].vatSum.toFixed(2)}</td>
+                         <td>${data[s].countVAT} | ${data[s].taxWithVATSum.toFixed(2)}</td>
+                         <td>${data[s].countNoVAT} | ${data[s].taxNoVATSum.toFixed(2)}</td></tr>`;
+                g.c += data[s].count; g.cV += data[s].countVAT; g.cN += data[s].countNoVAT;
+                g.vS += data[s].vatSum; g.tWS += data[s].taxWithVATSum; g.tNS += data[s].taxNoVATSum;
             }
-            html += `<tr><td><strong>Total</strong></td><td><strong>${g.count}</strong></td><td><strong>${g.cV}</strong></td><td><strong>${g.vat.toFixed(2)}</strong></td><td><strong>${g.cV}</strong></td><td><strong>${g.wV.toFixed(2)}</strong></td><td><strong>${g.cN}</strong></td><td><strong>${g.nV.toFixed(2)}</strong></td></tr></table>`;
+            html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
+                     <td><strong>${g.cV} | ${g.vS.toFixed(2)}</strong></td>
+                     <td><strong>${g.cV} | ${g.tWS.toFixed(2)}</strong></td>
+                     <td><strong>${g.cN} | ${g.tNS.toFixed(2)}</strong></td></tr></table>`;
             document.getElementById('result').innerHTML = html;
         }
     </script>
