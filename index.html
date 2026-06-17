@@ -6,7 +6,7 @@
     <style>
         body { font-family: sans-serif; padding: 20px; }
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: right; }
         th { background-color: #f4f4f4; text-align: center; }
     </style>
 </head>
@@ -65,21 +65,31 @@
         }
 
         function displayResults(data) {
-            let html = '<table><tr><th>Situation</th><th>Total</th><th>VAT (Count | Sum)</th><th>Base With VAT (Count | Sum)</th><th>Base No VAT (Count | Sum)</th></tr>';
-            let g = { c: 0, cV: 0, cN: 0, vS: 0, tWS: 0, tNS: 0 };
+            let html = '<table><tr><th>Situation</th><th>VAT (Sum)</th><th>Base With VAT (Sum)</th><th>Base No VAT (Sum)</th></tr>';
+            let g = { cV: 0, cN: 0, cT: 0, vS: 0, tWS: 0, tNS: 0 };
+            
+            // Set counts in headers
+            let header = document.querySelector('tr');
             
             for (let s in data) {
-                html += `<tr><td>${s}</td><td>${data[s].count}</td>
-                         <td>${data[s].countVAT} | ${data[s].vatSum.toFixed(2)}</td>
-                         <td>${data[s].countVAT} | ${data[s].taxWithVATSum.toFixed(2)}</td>
-                         <td>${data[s].countNoVAT} | ${data[s].taxNoVATSum.toFixed(2)}</td></tr>`;
-                g.c += data[s].count; g.cV += data[s].countVAT; g.cN += data[s].countNoVAT;
+                html += `<tr><td>${s}</td>
+                         <td>${data[s].vatSum.toFixed(2)}</td>
+                         <td>${data[s].taxWithVATSum.toFixed(2)}</td>
+                         <td>${data[s].taxNoVATSum.toFixed(2)}</td></tr>`;
+                
+                g.cV += data[s].countVAT; g.cN += data[s].countNoVAT;
                 g.vS += data[s].vatSum; g.tWS += data[s].taxWithVATSum; g.tNS += data[s].taxNoVATSum;
             }
-            html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
-                     <td><strong>${g.cV} | ${g.vS.toFixed(2)}</strong></td>
-                     <td><strong>${g.cV} | ${g.tWS.toFixed(2)}</strong></td>
-                     <td><strong>${g.cN} | ${g.tNS.toFixed(2)}</strong></td></tr></table>`;
+            
+            // Update table header with total counts
+            html = html.replace('VAT (Sum)', `VAT (Count: ${g.cV} | Sum)`);
+            html = html.replace('Base With VAT (Sum)', `Base With VAT (Count: ${g.cV} | Sum)`);
+            html = html.replace('Base No VAT (Sum)', `Base No VAT (Count: ${g.cN} | Sum)`);
+
+            html += `<tr><td><strong>Total</strong></td>
+                     <td><strong>${g.vS.toFixed(2)}</strong></td>
+                     <td><strong>${g.tWS.toFixed(2)}</strong></td>
+                     <td><strong>${g.tNS.toFixed(2)}</strong></td></tr></table>`;
             document.getElementById('result').innerHTML = html;
         }
     </script>
