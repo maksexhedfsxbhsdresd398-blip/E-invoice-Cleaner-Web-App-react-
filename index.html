@@ -82,26 +82,32 @@
 
         function renderTable(data, fileName) {
             let html = `<div class="file-group"><h3>File: ${fileName}</h3>
-            <table><tr><th>Situation</th><th>Count</th><th>VAT 6%</th><th>Taxable 6%</th><th>VAT 23%</th><th>Taxable 23%</th><th>Total VAT</th><th>Base No VAT</th></tr>`;
+            <table><tr><th>Situation</th><th>Count</th><th>VAT 6%</th><th>Taxable 6%</th><th>VAT 23%</th><th>Taxable 23%</th><th>Total VAT</th><th>Base No VAT</th><th>Total Base</th></tr>`;
             
-            let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, vTot: 0, nV: 0 };
+            let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, vTot: 0, nV: 0, tBase: 0 };
             
             for (let s in data) {
                 let rowVATTotal = data[s].vat6 + data[s].vat23;
+                let rowBaseTotal = data[s].tax6 + data[s].tax23 + data[s].taxNoVAT;
+                
                 html += `<tr><td>${s}</td><td>${data[s].count}</td>
                          <td>${data[s].vat6.toFixed(2)}</td><td>${data[s].tax6.toFixed(2)}</td>
                          <td>${data[s].vat23.toFixed(2)}</td><td>${data[s].tax23.toFixed(2)}</td>
                          <td>${rowVATTotal.toFixed(2)}</td>
-                         <td>${data[s].taxNoVAT.toFixed(2)}</td></tr>`;
+                         <td>${data[s].taxNoVAT.toFixed(2)}</td>
+                         <td>${rowBaseTotal.toFixed(2)}</td></tr>`;
+                
                 g.c += data[s].count; g.v6 += data[s].vat6; g.t6 += data[s].tax6;
                 g.v23 += data[s].vat23; g.t23 += data[s].tax23; 
                 g.vTot += rowVATTotal; g.nV += data[s].taxNoVAT;
+                g.tBase += rowBaseTotal;
             }
             html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
                      <td><strong>${g.v6.toFixed(2)}</strong></td><td><strong>${g.t6.toFixed(2)}</strong></td>
                      <td><strong>${g.v23.toFixed(2)}</strong></td><td><strong>${g.t23.toFixed(2)}</strong></td>
                      <td><strong>${g.vTot.toFixed(2)}</strong></td>
-                     <td><strong>${g.nV.toFixed(2)}</strong></td></tr></table></div>`;
+                     <td><strong>${g.nV.toFixed(2)}</strong></td>
+                     <td><strong>${g.tBase.toFixed(2)}</strong></td></tr></table></div>`;
             document.getElementById('result').innerHTML += html;
         }
     </script>
