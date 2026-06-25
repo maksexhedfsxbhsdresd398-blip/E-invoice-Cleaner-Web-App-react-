@@ -1,87 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Universal Invoice Analyzer</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .file-group { margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-        th { background-color: #f4f4f4; text-align: center; }
-    </style>
-</head>
-<body>
-    <h2>Universal Invoice Analyzer</h2>
-    <input type="file" id="csvFiles" accept=".csv" multiple>
-    <div id="result"></div>
-
-    <script>
-        document.getElementById('csvFiles').addEventListener('change', function(e) {
-            const files = e.target.files;
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = ''; 
-
-            for (let i = 0; i < files.length; i++) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    processFile(event.target.result, files[i].name);
-                };
-                reader.readAsText(files[i]);
-            }
-        });
-
-        function processFile(text, fileName) {
-            const rows = text.split(/\r?\n/);
-            if (rows.length < 2) return;
-
-            const headers = rows[0].replace(/"/g, '').split(';');
-            const map = {
-                total: headers.indexOf('Total'),
-                vat: headers.indexOf('VAT'),
-                taxable: headers.indexOf('Taxable Base'),
-                situation: headers.indexOf('Situation')
-            };
-
-            let data = {};
-            for (let i = 1; i < rows.length; i++) {
-                if (rows[i].trim() === "") continue;
-                let cols = rows[i].replace(/"/g, '').split(';');
-                if (cols.length <= Math.max(map.total, map.vat, map.taxable, map.situation)) continue;
-
-                const situation = cols[map.situation].trim();
-                const vat = parseCurrency(cols[map.vat]);
-                const taxable = parseCurrency(cols[map.taxable]);
-
-                if (!data[situation]) {
-                    data[situation] = { count: 0, vat6: 0, tax6: 0, vat23: 0, tax23: 0, taxNoVAT: 0 };
-                }
-                
-                data[situation].count++;
-                const rate = (taxable > 0) ? (vat / taxable) : 0;
-
-                if (rate >= 0.15) { 
-                    data[situation].vat23 += vat;
-                    data[situation].tax23 += taxable;
-                } else if (rate > 0.03) { 
-                    data[situation].vat6 += vat;
-                    data[situation].tax6 += taxable;
-                } else {
-                    data[situation].taxNoVAT += taxable;
-                }
-            }
-            renderTable(data, fileName);
-        }
-
-        function parseCurrency(val) {
-            if (!val) return 0;
-            let cleaned = val.replace(/[^0-9,.]/g, '');
-            if (cleaned.includes(',')) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-            return parseFloat(cleaned) || 0;
-        }
-
-        function renderTable(data, fileName) {
-            let html = `<div class="file-group"><h3>File: ${fileName}</h3>
+function renderTable(data, fileName) {
+            // CSS for green text
+            let html = `<style>.green-row { color: green; font-weight: bold; }</style>`;
+            
+            html += `<div class="file-group"><h3>File: ${fileName}</h3>
             <table><tr>
                 <th>Situation</th><th>Count</th>
                 <th>Taxable 6%</th><th>VAT 6%</th>
@@ -92,10 +13,13 @@
             let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, vTot: 0, nV: 0, tBase: 0 };
             
             for (let s in data) {
+                // Apply 'green-row' class if the status is 'Registado'
+                let rowClass = (s.trim() === 'Registado') ? 'class="green-row"' : '';
+                
                 let rowVATTotal = data[s].vat6 + data[s].vat23;
                 let rowBaseTotal = data[s].tax6 + data[s].tax23 + data[s].taxNoVAT;
                 
-                html += `<tr><td>${s}</td><td>${data[s].count}</td>
+                html += `<tr ${rowClass}><td>${s}</td><td>${data[s].count}</td>
                          <td>${data[s].tax6.toFixed(2)}</td><td>${data[s].vat6.toFixed(2)}</td>
                          <td>${data[s].tax23.toFixed(2)}</td><td>${data[s].vat23.toFixed(2)}</td>
                          <td>${data[s].taxNoVAT.toFixed(2)}</td>
@@ -114,6 +38,3 @@
                      <td><strong>${g.vTot.toFixed(2)}</strong></td></tr></table></div>`;
             document.getElementById('result').innerHTML += html;
         }
-    </script>
-</body>
-</html>
