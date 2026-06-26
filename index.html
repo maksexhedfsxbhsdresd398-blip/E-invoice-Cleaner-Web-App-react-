@@ -1,64 +1,144 @@
-function renderTable(data, fileName) {
-    let html = `<style>
-        .green-row { color: green; font-weight: bold; cursor: pointer; }
-        .green-row:hover { background-color: #e8f5e9; }
-        .copy-msg { font-size: 12px; color: gray; font-style: italic; }
-    </style>`;
-    
-    html += `<div class="file-group"><h3>File: ${fileName} <span class="copy-msg">(Click a green row to copy)</span></h3>
-    <table>
-        <tr>
-            <th>Situation</th><th>Count</th>
-            <th>Taxable 6%</th><th>VAT 6%</th>
-            <th>Taxable 23%</th><th>VAT 23%</th>
-            <th>Base No VAT</th><th>Total Base</th><th>Total VAT</th>
-        </tr>`;
-    
-    let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, vTot: 0, nV: 0, tBase: 0 };
-    
-    for (let s in data) {
-        let isRegistado = (s.trim() === 'Registado');
-        let rowClass = isRegistado ? 'class="green-row" onclick="copyRow(this)"' : '';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Invoice Analyzer</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .file-group { margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
+        th { background-color: #f4f4f4; text-align: center; }
         
-        let rowVATTotal = data[s].vat6 + data[s].vat23;
-        let rowBaseTotal = data[s].tax6 + data[s].tax23 + data[s].taxNoVAT;
+        /* Green row styling */
+        .green-row { color: green; font-weight: bold; }
         
-        html += `<tr ${rowClass}>
-            <td>${s}</td>
-            <td>${data[s].count}</td>
-            <td>${data[s].tax6.toFixed(2)}</td>
-            <td>${data[s].vat6.toFixed(2)}</td>
-            <td>${data[s].tax23.toFixed(2)}</td>
-            <td>${data[s].vat23.toFixed(2)}</td>
-            <td>${data[s].taxNoVAT.toFixed(2)}</td>
-            <td>${rowBaseTotal.toFixed(2)}</td>
-            <td>${rowVATTotal.toFixed(2)}</td>
-        </tr>`;
-        
-        g.c += data[s].count; g.v6 += data[s].vat6; g.t6 += data[s].tax6;
-        g.v23 += data[s].vat23; g.t23 += data[s].tax23; 
-        g.vTot += rowVATTotal; g.nV += data[s].taxNoVAT;
-        g.tBase += rowBaseTotal;
-    }
-    
-    html += `<tr>
-        <td><strong>Total</strong></td>
-        <td><strong>${g.c}</strong></td>
-        <td><strong>${g.t6.toFixed(2)}</strong></td>
-        <td><strong>${g.v6.toFixed(2)}</strong></td>
-        <td><strong>${g.t23.toFixed(2)}</strong></td>
-        <td><strong>${g.v23.toFixed(2)}</strong></td>
-        <td><strong>${g.nV.toFixed(2)}</strong></td>
-        <td><strong>${g.tBase.toFixed(2)}</strong></td>
-        <td><strong>${g.vTot.toFixed(2)}</strong></td>
-    </tr></table></div>`;
-    
-    document.getElementById('result').innerHTML += html;
-}
+        /* Clickable cell styling */
+        .clickable-cell { cursor: pointer; }
+        .clickable-cell:hover { background-color: #c8e6c9; }
+    </style>
+</head>
+<body>
+    <h2>Universal Invoice Analyzer</h2>
+    <input type="file" id="csvFiles" accept=".csv" multiple>
+    <div id="result"></div>
 
-function copyRow(tr) {
-    let text = Array.from(tr.cells).map(cell => cell.innerText).join('\t');
-    navigator.clipboard.writeText(text).then(() => {
-        alert("Row copied to clipboard!");
-    });
-}
+    <script>
+        document.getElementById('csvFiles').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = ''; 
+
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    processFile(event.target.result, files[i].name);
+                };
+                reader.readAsText(files[i]);
+            }
+        });
+
+        function processFile(text, fileName) {
+            const rows = text.split(/\r?\n/);
+            if (rows.length < 2) return;
+
+            const headers = rows[0].replace(/"/g, '').split(';');
+            const map = {
+                total: headers.indexOf('Total'),
+                vat: headers.indexOf('VAT'),
+                taxable: headers.indexOf('Taxable Base'),
+                situation: headers.indexOf('Situation')
+            };
+
+            let data = {};
+            for (let i = 1; i < rows.length; i++) {
+                if (rows[i].trim() === "") continue;
+                let cols = rows[i].replace(/"/g, '').split(';');
+                if (cols.length <= Math.max(map.total, map.vat, map.taxable, map.situation)) continue;
+
+                const situation = cols[map.situation].trim();
+                const vat = parseCurrency(cols[map.vat]);
+                const taxable = parseCurrency(cols[map.taxable]);
+
+                if (!data[situation]) {
+                    data[situation] = { count: 0, vat6: 0, tax6: 0, vat23: 0, tax23: 0, taxNoVAT: 0 };
+                }
+                
+                data[situation].count++;
+                const rate = (taxable > 0) ? (vat / taxable) : 0;
+
+                if (rate >= 0.15) { 
+                    data[situation].vat23 += vat;
+                    data[situation].tax23 += taxable;
+                } else if (rate > 0.03) { 
+                    data[situation].vat6 += vat;
+                    data[situation].tax6 += taxable;
+                } else {
+                    data[situation].taxNoVAT += taxable;
+                }
+            }
+            renderTable(data, fileName);
+        }
+
+        function parseCurrency(val) {
+            if (!val) return 0;
+            let cleaned = val.replace(/[^0-9,.]/g, '');
+            if (cleaned.includes(',')) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
+        }
+
+        function renderTable(data, fileName) {
+            let html = `<div class="file-group"><h3>File: ${fileName}</h3>
+            <table>
+                <tr>
+                    <th>Situation</th><th>Count</th>
+                    <th>Taxable 6%</th><th>VAT 6%</th>
+                    <th>Taxable 23%</th><th>VAT 23%</th>
+                    <th>Base No VAT</th><th>Total Base</th><th>Total VAT</th>
+                </tr>`;
+            
+            let g = { c: 0, v6: 0, t6: 0, v23: 0, t23: 0, vTot: 0, nV: 0, tBase: 0 };
+            
+            for (let s in data) {
+                let isRegistado = (s.trim() === 'Registado');
+                let rowVATTotal = data[s].vat6 + data[s].vat23;
+                let rowBaseTotal = data[s].tax6 + data[s].tax23 + data[s].taxNoVAT;
+                
+                let rowClass = isRegistado ? 'class="green-row"' : '';
+                let cellClass = isRegistado ? 'class="clickable-cell"' : '';
+                
+                html += `<tr ${rowClass}>
+                         <td>${s}</td><td>${data[s].count}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${data[s].tax6.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${data[s].vat6.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${data[s].tax23.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${data[s].vat23.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${data[s].taxNoVAT.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${rowBaseTotal.toFixed(2)}</td>
+                         <td ${cellClass} onclick="copyCell(this)">${rowVATTotal.toFixed(2)}</td></tr>`;
+                
+                g.c += data[s].count; g.v6 += data[s].vat6; g.t6 += data[s].tax6;
+                g.v23 += data[s].vat23; g.t23 += data[s].tax23; 
+                g.vTot += rowVATTotal; g.nV += data[s].taxNoVAT;
+                g.tBase += rowBaseTotal;
+            }
+            html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
+                     <td><strong>${g.t6.toFixed(2)}</strong></td><td><strong>${g.v6.toFixed(2)}</strong></td>
+                     <td><strong>${g.t23.toFixed(2)}</strong></td><td><strong>${g.v23.toFixed(2)}</strong></td>
+                     <td><strong>${g.nV.toFixed(2)}</strong></td>
+                     <td><strong>${g.tBase.toFixed(2)}</strong></td>
+                     <td><strong>${g.vTot.toFixed(2)}</strong></td></tr></table></div>`;
+            document.getElementById('result').innerHTML += html;
+        }
+
+        function copyCell(cell) {
+            let text = cell.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                let originalColor = cell.style.backgroundColor;
+                cell.style.backgroundColor = '#c8e6c9'; 
+                setTimeout(() => cell.style.backgroundColor = originalColor, 500);
+            });
+        }
+    </script>
+</body>
+</html>
