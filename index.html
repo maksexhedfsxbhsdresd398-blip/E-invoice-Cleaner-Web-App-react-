@@ -24,11 +24,15 @@ function renderTable(data, fileName) {
         let rowBaseTotal = data[s].tax6 + data[s].tax23 + data[s].taxNoVAT;
         
         html += `<tr ${rowClass}>
-            <td>${s}</td><td>${data[s].count}</td>
-            <td>${data[s].tax6.toFixed(2)}</td><td>${data[s].vat6.toFixed(2)}</td>
-            <td>${data[s].tax23.toFixed(2)}</td><td>${data[s].vat23.toFixed(2)}</td>
+            <td>${s}</td>
+            <td>${data[s].count}</td>
+            <td>${data[s].tax6.toFixed(2)}</td>
+            <td>${data[s].vat6.toFixed(2)}</td>
+            <td>${data[s].tax23.toFixed(2)}</td>
+            <td>${data[s].vat23.toFixed(2)}</td>
             <td>${data[s].taxNoVAT.toFixed(2)}</td>
-            <td>${rowBaseTotal.toFixed(2)}</td><td>${rowVATTotal.toFixed(2)}</td>
+            <td>${rowBaseTotal.toFixed(2)}</td>
+            <td>${rowVATTotal.toFixed(2)}</td>
         </tr>`;
         
         g.c += data[s].count; g.v6 += data[s].vat6; g.t6 += data[s].tax6;
@@ -37,17 +41,21 @@ function renderTable(data, fileName) {
         g.tBase += rowBaseTotal;
     }
     
-    html += `<tr><td><strong>Total</strong></td><td><strong>${g.c}</strong></td>
-             <td><strong>${g.t6.toFixed(2)}</strong></td><td><strong>${g.v6.toFixed(2)}</strong></td>
-             <td><strong>${g.t23.toFixed(2)}</strong></td><td><strong>${g.v23.toFixed(2)}</strong></td>
-             <td><strong>${g.nV.toFixed(2)}</strong></td>
-             <td><strong>${g.tBase.toFixed(2)}</strong></td>
-             <td><strong>${g.vTot.toFixed(2)}</strong></td></tr></table></div>`;
+    html += `<tr>
+        <td><strong>Total</strong></td>
+        <td><strong>${g.c}</strong></td>
+        <td><strong>${g.t6.toFixed(2)}</strong></td>
+        <td><strong>${g.v6.toFixed(2)}</strong></td>
+        <td><strong>${g.t23.toFixed(2)}</strong></td>
+        <td><strong>${g.v23.toFixed(2)}</strong></td>
+        <td><strong>${g.nV.toFixed(2)}</strong></td>
+        <td><strong>${g.tBase.toFixed(2)}</strong></td>
+        <td><strong>${g.vTot.toFixed(2)}</strong></td>
+    </tr></table></div>`;
     
     document.getElementById('result').innerHTML += html;
 }
 
-// Add this function at the bottom of your <script> section
 function copyRow(tr) {
     let text = Array.from(tr.cells).map(cell => cell.innerText).join('\t');
     navigator.clipboard.writeText(text).then(() => {
