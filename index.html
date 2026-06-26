@@ -4,16 +4,13 @@
     <meta charset="UTF-8">
     <title>Universal Invoice Analyzer</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
+        body { font-family: sans-serif; padding: 20px; position: relative; }
         .file-group { margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
         table { border-collapse: collapse; width: 100%; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: right; }
         th { background-color: #f4f4f4; text-align: center; }
         
-        /* Green row styling */
         .green-row { color: green; font-weight: bold; }
-        
-        /* Clickable cell styling */
         .clickable-cell { cursor: pointer; }
         .clickable-cell:hover { background-color: #c8e6c9; }
     </style>
@@ -136,7 +133,28 @@
             navigator.clipboard.writeText(text).then(() => {
                 let originalColor = cell.style.backgroundColor;
                 cell.style.backgroundColor = '#c8e6c9'; 
-                setTimeout(() => cell.style.backgroundColor = originalColor, 500);
+                
+                let popup = document.createElement("div");
+                popup.innerText = "Copied!";
+                popup.style.position = "absolute";
+                popup.style.background = "#333";
+                popup.style.color = "#fff";
+                popup.style.padding = "2px 8px";
+                popup.style.borderRadius = "4px";
+                popup.style.fontSize = "10px";
+                popup.style.pointerEvents = "none";
+                
+                // Position popup near the click
+                let rect = cell.getBoundingClientRect();
+                popup.style.top = (rect.top + window.scrollY - 20) + "px";
+                popup.style.left = (rect.left + window.scrollX) + "px";
+                
+                document.body.appendChild(popup);
+                
+                setTimeout(() => {
+                    cell.style.backgroundColor = originalColor;
+                    popup.remove();
+                }, 800);
             });
         }
     </script>
